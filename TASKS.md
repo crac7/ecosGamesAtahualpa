@@ -17,6 +17,7 @@
 - [x] Stamina (gasto, pausa y regeneracion) y roll con K (i-frames, comprometido, solo en el suelo) + barra de stamina placeholder.
 - [x] Enemigo basico "scout" (FSM patrol/chase/attack con telegrafia, stagger, muerte) + vida del jugador, knockback, muerte y respawn placeholder.
 - [x] Checkpoint tipo fogon con L (descansar: vida/stamina, reset de enemigos, guardado versionado en localStorage, respawn en el ultimo fogon; bloqueado si hay enemigos en persecucion).
+- [x] Atajo desbloqueable: puerta `gate_shortcut` que solo se abre con L desde `opensFrom`, persiste en el save (v2 con migracion desde v1).
 
 ## Parcial
 - [-] M0: Loader/manifest de assets (solo precarga minima).
@@ -24,7 +25,6 @@
 
 ## Por hacer (segun README)
 - [x] Player con sprites y maquina de estados (idle/walk/jump/fall).
-- [ ] Shortcut/atajo desbloqueable (puerta desde el otro lado).
 - [ ] UI minima (vida, stamina, eco/moneda).
 - [ ] Zona 01 vertical slice (10-15 pantallas) + miniboss.
 - [ ] Pulido (sonido, feedback, particulas, balance).

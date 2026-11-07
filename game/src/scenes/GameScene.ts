@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { Checkpoint } from '../entities/Checkpoint'
 import { Player } from '../entities/Player'
 import { Scout } from '../entities/Scout'
+import { ShortcutGate, type GateSide } from '../entities/ShortcutGate'
 import { TrainingDummy } from '../entities/TrainingDummy'
 import { PlayerInput } from '../input/PlayerInput'
 import { BASE_HEIGHT, CAMERA } from '../settings'
@@ -17,6 +18,7 @@ export class GameScene extends Phaser.Scene {
   private scouts: Scout[] = []
   private hud?: DebugHud
   private checkpoints: Checkpoint[] = []
+  private gates: ShortcutGate[] = []
   private save!: SaveData
 
   constructor() {
@@ -85,13 +87,25 @@ export class GameScene extends Phaser.Scene {
       .filter((obj) => objectProp(obj, 'type') === 'scout')
       .map((obj) => new Scout(this, obj.x ?? 0, obj.y ?? 0, groundLayer))
 
+    this.gates = map
+      .filterObjects('Objects', (obj) => obj.name === 'gate_shortcut')!
+      .map((obj) => {
+        const id = objectProp(obj, 'id') ?? `gate_${obj.id}`
+        const side: GateSide = objectProp(obj, 'opensFrom') === 'left' ? 'left' : 'right'
+        const gate = new ShortcutGate(this, id, obj.x ?? 0, obj.y ?? 0, side)
+        if (this.save.openedShortcuts.includes(id)) gate.open(true)
+        return gate
+      })
+    this.physics.add.collider(this.player.sprite, this.gates)
+    this.physics.add.collider(this.scouts, this.gates)
+
     this.hud = new DebugHud(this)
   }
 
   update(_time: number, delta: number) {
     if (!this.player) return
 
-    // Consumed every frame so a press made while unable to rest is dropped.
+    // Consumed every frame so a press made while unable to interact is dropped.
     const interactPressed = this.playerInput.consumeInteract()
 
     // Order matters: player timers, then enemies (their hits land this frame),
@@ -99,13 +113,16 @@ export class GameScene extends Phaser.Scene {
     this.player.tickTimers(delta)
     for (const scout of this.scouts) scout.tick(delta, this.player)
     this.player.update(delta, this.playerInput, [...this.dummies, ...this.scouts])
-    this.updateCheckpoints(interactPressed)
+    const usedByCheckpoint = this.updateCheckpoints(interactPressed)
+    this.updateGates(interactPressed && !usedByCheckpoint)
 
     this.hud?.draw(this.player)
   }
 
-  private updateCheckpoints(interactPressed: boolean) {
+  /** Returns true when the interact press was used to rest. */
+  private updateCheckpoints(interactPressed: boolean): boolean {
     const player = this.player
+    let used = false
     const enemiesAggroed = this.scouts.some(
       (s) => s.aiState === 'chase' || s.aiState === 'attack'
     )
@@ -119,7 +136,32 @@ export class GameScene extends Phaser.Scene {
         continue
       }
       cp.setPrompt(player.canInteract ? 'L: rest' : null)
-      if (interactPressed && player.canInteract) this.restAt(cp)
+      if (interactPressed && player.canInteract && !used) {
+        this.restAt(cp)
+        used = true
+      }
+    }
+    return used
+  }
+
+  private updateGates(interactPressed: boolean) {
+    const player = this.player
+    for (const gate of this.gates) {
+      if (!gate.inRange(player.x, player.y) || player.health.isDead) {
+        gate.setPrompt(null)
+        continue
+      }
+      if (!gate.canOpenFrom(player.x)) {
+        gate.setPrompt('opens from the other side')
+        continue
+      }
+      gate.setPrompt(player.canInteract ? 'L: open' : null)
+      if (interactPressed && player.canInteract) {
+        gate.open()
+        const opened = new Set([...this.save.openedShortcuts, gate.id])
+        this.persist({ ...this.save, openedShortcuts: [...opened] })
+        return
+      }
     }
   }
 
@@ -131,8 +173,12 @@ export class GameScene extends Phaser.Scene {
     this.resetEnemies()
 
     const lit = new Set([...this.save.litCheckpoints, cp.id])
-    this.save = { ...this.save, checkpointId: cp.id, litCheckpoints: [...lit] }
-    if (!writeSave(this.save)) {
+    this.persist({ ...this.save, checkpointId: cp.id, litCheckpoints: [...lit] })
+  }
+
+  private persist(next: SaveData) {
+    this.save = next
+    if (!writeSave(next)) {
       console.warn('[save] Could not write the save (storage unavailable or full).')
     }
   }

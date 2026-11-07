@@ -1318,12 +1318,36 @@
        "value": "bonfire_02"
       }
      ]
+    },
+    {
+     "id": 6,
+     "name": "gate_shortcut",
+     "type": "gate_shortcut",
+     "x": 1200,
+     "y": 608,
+     "point": true,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "properties": [
+      {
+       "name": "id",
+       "type": "string",
+       "value": "gate_zone01_floor"
+      },
+      {
+       "name": "opensFrom",
+       "type": "string",
+       "value": "right"
+      }
+     ]
     }
    ]
   }
  ],
  "nextlayerid": 3,
- "nextobjectid": 6,
+ "nextobjectid": 7,
  "tilesets": [
   {
    "columns": 2,
