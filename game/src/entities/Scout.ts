@@ -32,18 +32,21 @@ export class Scout extends Phaser.GameObjects.Rectangle implements Hurtbox {
   private current: ScoutState = 'patrol'
   private stateTime = 0
   private dir: 1 | -1 = -1
+  private readonly onDeath?: () => void
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     groundY: number,
-    ground: Phaser.Tilemaps.TilemapLayer
+    ground: Phaser.Tilemaps.TilemapLayer,
+    onDeath?: () => void
   ) {
     super(scene, x, groundY, SCOUT.width, SCOUT.height, BODY_COLOR)
     this.setOrigin(0.5, 1)
     this.spawnX = x
     this.spawnY = groundY
     this.ground = ground
+    this.onDeath = onDeath
     scene.add.existing(this)
     scene.physics.add.existing(this)
     this.body.setCollideWorldBounds(true)
@@ -70,6 +73,7 @@ export class Scout extends Phaser.GameObjects.Rectangle implements Hurtbox {
       this.body.enable = false
       this.setVisible(false)
       this.hitboxDebug.clear()
+      this.onDeath?.()
       return
     }
     // No poise: any hit interrupts the swing and pushes the scout back.

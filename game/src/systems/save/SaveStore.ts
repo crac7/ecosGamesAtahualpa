@@ -3,7 +3,7 @@
  * are rebuilt from it on load. A single setItem on one key is atomic, so a
  * crash leaves either the old or the new save.
  */
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 const SAVE_KEY = 'eco-atahualpa.save'
 
 export interface SaveData {
@@ -16,6 +16,8 @@ export interface SaveData {
   litCheckpoints: string[]
   /** Every one-way shortcut opened so far. */
   openedShortcuts: string[]
+  /** Carried eco (currency), a non-negative integer. */
+  eco: number
 }
 
 export function defaultSave(map: string): SaveData {
@@ -25,6 +27,7 @@ export function defaultSave(map: string): SaveData {
     checkpointId: null,
     litCheckpoints: [],
     openedShortcuts: [],
+    eco: 0,
   }
 }
 
@@ -34,6 +37,8 @@ type RawSave = Record<string, unknown>
 const MIGRATIONS: Record<number, (d: RawSave) => RawSave> = {
   // v2 adds opened shortcuts; v1 saves had none.
   1: (d) => ({ ...d, openedShortcuts: [] }),
+  // v3 adds carried eco; earlier saves had none.
+  2: (d) => ({ ...d, eco: 0 }),
 }
 
 /** Parses, migrates and validates raw save text. Returns null when unusable. */
@@ -64,6 +69,7 @@ export function parseSave(raw: string | null): SaveData | null {
   if (d.checkpointId !== null && typeof d.checkpointId !== 'string') return null
   if (!isStringArray(d.litCheckpoints)) return null
   if (!isStringArray(d.openedShortcuts)) return null
+  if (typeof d.eco !== 'number' || !Number.isSafeInteger(d.eco) || d.eco < 0) return null
 
   return {
     version: SAVE_VERSION,
@@ -71,6 +77,7 @@ export function parseSave(raw: string | null): SaveData | null {
     checkpointId: d.checkpointId,
     litCheckpoints: [...new Set(d.litCheckpoints)],
     openedShortcuts: [...new Set(d.openedShortcuts)],
+    eco: d.eco,
   }
 }
 

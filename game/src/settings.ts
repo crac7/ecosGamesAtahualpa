@@ -66,6 +66,12 @@ export const SCOUT = {
   },
 } as const
 
+/** Eco (currency). Soft death penalty: lose a share, nothing to recover. */
+export const ECO = {
+  scoutReward: 15,
+  deathLossRatio: 0.3,
+} as const
+
 export const PLAYER_ROLL = {
   durationMs: 360,
   speed: 260,

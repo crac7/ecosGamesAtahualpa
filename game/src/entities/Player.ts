@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import type { PlayerInput } from '../input/PlayerInput'
-import { PLAYER, PLAYER_ATTACK, PLAYER_ROLL, PLAYER_STAMINA } from '../settings'
+import { PlayerEvents } from '../events'
+import { ECO, PLAYER, PLAYER_ATTACK, PLAYER_ROLL, PLAYER_STAMINA } from '../settings'
 import { Health } from '../systems/combat/Health'
 import { MeleeAttack, type Hurtbox } from '../systems/combat/MeleeAttack'
 import { Roll } from '../systems/combat/Roll'
@@ -28,6 +29,8 @@ export type Facing = 'left' | 'right'
 export interface PlayerOptions {
   /** Called after the player is moved back to its spawn point. */
   onRespawn?: () => void
+  /** Eco carried when the scene starts (from the save). */
+  initialEco?: number
 }
 
 /**
@@ -44,6 +47,10 @@ export class Player implements ScoutTarget {
   state: PlayerState = 'idle'
   facing: Facing = 'right'
   hitStunLeft = 0
+  private ecoAmount = 0
+  // Last values sent to listeners; NaN forces the first publish.
+  private publishedHp = Number.NaN
+  private publishedStamina = Number.NaN
 
   private readonly scene: Phaser.Scene
   private readonly spawnPoint: Phaser.Math.Vector2
@@ -60,6 +67,7 @@ export class Player implements ScoutTarget {
     this.scene = scene
     this.options = options
     this.spawnPoint = new Phaser.Math.Vector2(x, y)
+    this.ecoAmount = Math.max(0, Math.floor(options.initialEco ?? 0))
 
     this.sprite = scene.physics.add.sprite(x, y, 'player_idle', 0)
     this.sprite.setOrigin(0.5, 1)
@@ -82,6 +90,15 @@ export class Player implements ScoutTarget {
     return this.sprite.x
   }
 
+  get eco() {
+    return this.ecoAmount
+  }
+
+  addEco(amount: number) {
+    if (amount <= 0) return
+    this.setEco(this.ecoAmount + amount)
+  }
+
   get y() {
     return this.sprite.y
   }
@@ -102,8 +119,45 @@ export class Player implements ScoutTarget {
     this.body.setVelocity(direction * PLAYER.knockbackX, -PLAYER.knockbackY)
     this.hitStunLeft = PLAYER.hitStunMs
     if (this.health.isDead) {
+      // Soft penalty: lose a share of the carried eco, nothing to recover.
+      this.setEco(this.ecoAmount - Math.floor(this.ecoAmount * ECO.deathLossRatio))
       this.scene.time.delayedCall(PLAYER.respawnDelayMs, () => this.respawn())
     }
+  }
+
+  /**
+   * Emits HUD events for values that changed since the last call.
+   * Eco is emitted immediately by setEco; health and stamina are checked here.
+   */
+  publishState() {
+    const events = this.scene.events
+    if (this.health.hp !== this.publishedHp) {
+      this.publishedHp = this.health.hp
+      events.emit(PlayerEvents.HEALTH, this.health.hp, this.health.max)
+    }
+    const stamina = Math.round(this.stamina.ratio * 100) / 100
+    if (stamina !== this.publishedStamina) {
+      this.publishedStamina = stamina
+      events.emit(PlayerEvents.STAMINA, stamina)
+    }
+  }
+
+  /** Re-sends every value, e.g. when a listener subscribes late. */
+  publishAll() {
+    this.publishedHp = Number.NaN
+    this.publishedStamina = Number.NaN
+    this.publishState()
+    this.scene.events.emit(PlayerEvents.ECO, this.ecoAmount, 0)
+  }
+
+  private setEco(value: number) {
+    // Guard: NaN/Infinity would persist as null and reset the save on load.
+    if (!Number.isFinite(value)) return
+    const next = Math.max(0, Math.floor(value))
+    const delta = next - this.ecoAmount
+    if (delta === 0) return
+    this.ecoAmount = next
+    this.scene.events.emit(PlayerEvents.ECO, next, delta)
   }
 
   /** True when the player is free to interact (not mid-action, hurt or airborne). */

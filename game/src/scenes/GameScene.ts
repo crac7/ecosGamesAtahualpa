@@ -5,10 +5,11 @@ import { Scout } from '../entities/Scout'
 import { ShortcutGate, type GateSide } from '../entities/ShortcutGate'
 import { TrainingDummy } from '../entities/TrainingDummy'
 import { PlayerInput } from '../input/PlayerInput'
-import { BASE_HEIGHT, CAMERA } from '../settings'
+import { PlayerEvents } from '../events'
+import { BASE_HEIGHT, CAMERA, ECO } from '../settings'
 import { CameraRig } from '../systems/CameraRig'
 import { loadSave, writeSave, type SaveData } from '../systems/save/SaveStore'
-import { DebugHud } from '../ui/DebugHud'
+import { Hud } from '../ui/Hud'
 
 export class GameScene extends Phaser.Scene {
   private player!: Player
@@ -16,7 +17,7 @@ export class GameScene extends Phaser.Scene {
   private cameraRig?: CameraRig
   private dummies: TrainingDummy[] = []
   private scouts: Scout[] = []
-  private hud?: DebugHud
+  private hud?: Hud
   private checkpoints: Checkpoint[] = []
   private gates: ShortcutGate[] = []
   private save!: SaveData
@@ -69,6 +70,7 @@ export class GameScene extends Phaser.Scene {
         this.resetEnemies()
         this.cameraRig?.snapToTarget()
       },
+      initialEco: this.save.eco,
     })
 
     this.cameraRig = new CameraRig(this, this.cameras.main, this.player.sprite, CAMERA)
@@ -85,7 +87,12 @@ export class GameScene extends Phaser.Scene {
     this.scouts = map
       .filterObjects('Objects', (obj) => obj.name === 'enemy_spawn')!
       .filter((obj) => objectProp(obj, 'type') === 'scout')
-      .map((obj) => new Scout(this, obj.x ?? 0, obj.y ?? 0, groundLayer))
+      .map(
+        (obj) =>
+          new Scout(this, obj.x ?? 0, obj.y ?? 0, groundLayer, () =>
+            this.player.addEco(ECO.scoutReward)
+          )
+      )
 
     this.gates = map
       .filterObjects('Objects', (obj) => obj.name === 'gate_shortcut')!
@@ -99,7 +106,19 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player.sprite, this.gates)
     this.physics.add.collider(this.scouts, this.gates)
 
-    this.hud = new DebugHud(this)
+    this.hud = new Hud(this)
+    this.player.publishAll()
+
+    // Eco changes are progress: save them right away (kills and death penalty).
+    // scene.events is not cleared on shutdown, so remove it ourselves.
+    this.events.on(PlayerEvents.ECO, this.onEcoChanged, this)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.events.off(PlayerEvents.ECO, this.onEcoChanged, this)
+    )
+  }
+
+  private onEcoChanged(eco: number) {
+    if (eco !== this.save.eco) this.persist({ ...this.save, eco })
   }
 
   update(_time: number, delta: number) {
@@ -116,7 +135,8 @@ export class GameScene extends Phaser.Scene {
     const usedByCheckpoint = this.updateCheckpoints(interactPressed)
     this.updateGates(interactPressed && !usedByCheckpoint)
 
-    this.hud?.draw(this.player)
+    this.player.publishState()
+    this.hud?.debug(this.player)
   }
 
   /** Returns true when the interact press was used to rest. */
