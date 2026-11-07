@@ -106,7 +106,23 @@ export class Player implements ScoutTarget {
     }
   }
 
-  /** Placeholder until checkpoints: back to the map spawn, full resources. */
+  /** True when the player is free to interact (not mid-action, hurt or airborne). */
+  get canInteract() {
+    return (this.state === 'idle' || this.state === 'walk') && this.body.blocked.down
+  }
+
+  /** Where the player comes back after dying (last checkpoint). */
+  setRespawnPoint(x: number, y: number) {
+    this.spawnPoint.set(x, y)
+  }
+
+  /** Resting at a checkpoint restores health and stamina in place. */
+  rest() {
+    this.health.reset()
+    this.stamina.refill()
+  }
+
+  /** Back to the respawn point with full resources. */
   respawn() {
     this.health.reset()
     this.stamina.refill()

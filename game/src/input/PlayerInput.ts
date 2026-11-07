@@ -10,6 +10,7 @@ export class PlayerInput {
     jump: Phaser.Input.Keyboard.Key
     attack: Phaser.Input.Keyboard.Key
     roll: Phaser.Input.Keyboard.Key
+    interact: Phaser.Input.Keyboard.Key
   }
 
   constructor(scene: Phaser.Scene) {
@@ -22,6 +23,7 @@ export class PlayerInput {
       jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
       attack: Phaser.Input.Keyboard.KeyCodes.J,
       roll: Phaser.Input.Keyboard.KeyCodes.K,
+      interact: Phaser.Input.Keyboard.KeyCodes.L,
     }) as PlayerInput['keys']
   }
 
@@ -50,5 +52,10 @@ export class PlayerInput {
   /** Edge-triggered: true once per press, then the press is consumed. */
   consumeRoll() {
     return !!this.keys && Phaser.Input.Keyboard.JustDown(this.keys.roll)
+  }
+
+  /** Edge-triggered: true once per press, then the press is consumed. */
+  consumeInteract() {
+    return !!this.keys && Phaser.Input.Keyboard.JustDown(this.keys.interact)
   }
 }

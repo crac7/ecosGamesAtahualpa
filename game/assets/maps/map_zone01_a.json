@@ -1280,12 +1280,50 @@
        "value": "scout"
       }
      ]
+    },
+    {
+     "id": 4,
+     "name": "bonfire",
+     "type": "bonfire",
+     "x": 192,
+     "y": 608,
+     "point": true,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "properties": [
+      {
+       "name": "id",
+       "type": "string",
+       "value": "bonfire_01"
+      }
+     ]
+    },
+    {
+     "id": 5,
+     "name": "bonfire",
+     "type": "bonfire",
+     "x": 1580,
+     "y": 160,
+     "point": true,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "properties": [
+      {
+       "name": "id",
+       "type": "string",
+       "value": "bonfire_02"
+      }
+     ]
     }
    ]
   }
  ],
  "nextlayerid": 3,
- "nextobjectid": 4,
+ "nextobjectid": 6,
  "tilesets": [
   {
    "columns": 2,

@@ -4,7 +4,7 @@ import type { Player } from '../entities/Player'
 const STAMINA_BAR_COLOR = 0x2fa3a8 // eco_2
 const BAR_BG = 0x23283a // shadow_deep
 const HEALTH_BAR_COLOR = 0x8e2b3a // textile_red
-const HELP_TEXT = 'WASD/Arrows: move  Space/W: jump  J: attack  K: roll'
+const HELP_TEXT = 'WASD/Arrows: move  Space/W: jump  J: attack  K: roll  L: rest'
 
 /** Placeholder HUD until the UI task: controls, player state, health and stamina. */
 export class DebugHud {
