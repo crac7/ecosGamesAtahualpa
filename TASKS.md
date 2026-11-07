@@ -10,6 +10,7 @@
 - [x] Maquina de estados basica del player (idle/walk/jump/fall) con placeholders.
 - [x] Sprite idle del player (48x48, dos direcciones) integrado.
 - [x] Sprites walk/jump/fall integrados y animaciones basicas creadas.
+- [x] Direccion de arte aprobada (`art/ART_DIRECTION.md`) + paleta Zona 01 (`art/palettes/pal_zone01.gpl`).
 
 ## Parcial
 - [-] M0: Loader/manifest de assets (solo precarga minima).

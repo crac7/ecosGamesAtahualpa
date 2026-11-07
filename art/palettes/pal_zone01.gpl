@@ -1,0 +1,30 @@
+GIMP Palette
+Name: Eco de Atahualpa - Zone01
+Columns: 8
+#
+ 11  15  18	void
+ 26  28  36	outline
+ 35  40  58	shadow_deep
+ 46  53  72	stone_1
+ 68  77  99	stone_2
+102 112 138	stone_3
+147 156 176	stone_4
+ 61  35  33	rust_1
+107  58  42	rust_2
+163  90  50	rust_3
+214 139  74	rust_4
+ 74  52  38	earth_1
+122  85  56	earth_2
+176 132  88	earth_3
+142  43  58	textile_red
+217 168  60	gold
+138  90  68	skin_1
+196 138 104	skin_2
+226 176 142	skin_3
+ 29  90  99	eco_1
+ 47 163 168	eco_2
+127 240 230	eco_3
+230 255 251	eco_4
+122  20  32	danger_1
+224  64  46	danger_2
+255 154  92	danger_3
