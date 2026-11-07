@@ -16,7 +16,7 @@ const config: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 900 },
+      gravity: { x: 0, y: 900 },
       debug: false,
     },
   },
@@ -28,4 +28,9 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [BootScene, PreloadScene, GameScene],
 }
 
-new Phaser.Game(config)
+const game = new Phaser.Game(config)
+
+// Dev-only handle for debugging from the browser console.
+if (import.meta.env.DEV) {
+  ;(window as unknown as { __game: Phaser.Game }).__game = game
+}

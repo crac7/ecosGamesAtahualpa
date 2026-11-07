@@ -11,6 +11,8 @@
 - [x] Sprite idle del player (48x48, dos direcciones) integrado.
 - [x] Sprites walk/jump/fall integrados y animaciones basicas creadas.
 - [x] Direccion de arte aprobada (`art/ART_DIRECTION.md`) + paleta Zona 01 (`art/palettes/pal_zone01.gpl`).
+- [x] Camara con seguimiento (deadzone + look-ahead + suavizado independiente del FPS) y limites por mapa (`game/src/systems/CameraRig.ts`).
+- [x] Mapa de prueba ampliado a 60x20 para probar la camara.
 
 ## Parcial
 - [-] M0: Loader/manifest de assets (solo precarga minima).
@@ -18,7 +20,6 @@
 
 ## Por hacer (segun README)
 - [x] Player con sprites y maquina de estados (idle/walk/jump/fall).
-- [ ] Camara con seguimiento del player y limites por mapa.
 - [ ] Combate basico (ataque, hitbox, dano).
 - [ ] Stamina y esquiva/roll.
 - [ ] Enemigo basico (patrol/chase/attack).

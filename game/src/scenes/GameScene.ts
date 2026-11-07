@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
-import { BASE_HEIGHT } from '../settings'
+import { BASE_HEIGHT, CAMERA } from '../settings'
+import { CameraRig } from '../systems/CameraRig'
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite
@@ -14,6 +15,7 @@ export class GameScene extends Phaser.Scene {
   private state: PlayerState = 'idle'
   private stateText?: Phaser.GameObjects.Text
   private facing: Facing = 'right'
+  private cameraRig?: CameraRig
 
   constructor() {
     super('Game')
@@ -56,7 +58,8 @@ export class GameScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, groundLayer)
 
-    this.cameras.main.startFollow(this.player, true, 1, 1)
+    this.cameraRig = new CameraRig(this, this.cameras.main, this.player, CAMERA)
+    this.cameraRig.snapToTarget()
 
     this.createAnimations()
 

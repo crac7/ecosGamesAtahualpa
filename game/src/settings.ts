@@ -5,3 +5,12 @@ export const VIEW_TILES_Y = 12
 export const BASE_WIDTH = TILE_SIZE * VIEW_TILES_X
 export const BASE_HEIGHT = TILE_SIZE * VIEW_TILES_Y
 export const SCALE = 3
+
+export const CAMERA = {
+  deadzoneHalfWidth: 24,
+  deadzoneHalfHeight: 48,
+  lookAhead: 64,
+  followRateX: 8,
+  followRateY: 5,
+  lookAheadRate: 3,
+} as const
