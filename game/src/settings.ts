@@ -14,3 +14,13 @@ export const CAMERA = {
   followRateY: 5,
   lookAheadRate: 3,
 } as const
+
+/** Placeholder timings: tune these before drawing attack animations. */
+export const PLAYER_ATTACK = {
+  windupMs: 120,
+  activeMs: 100,
+  recoveryMs: 260,
+  damage: 1,
+  width: 28,
+  height: 24,
+} as const
