@@ -123,6 +123,11 @@ export class Player implements ScoutTarget {
   }
 
   update(deltaMs: number, input: PlayerInput, targets: readonly Hurtbox[]) {
+    // Consume edge-triggered presses every frame, before any early return, so
+    // a key held through a swing, stun or death does not fire on its own later.
+    const attackPressed = input.consumeAttack()
+    const rollPressed = input.consumeRoll()
+
     if (this.health.isDead) {
       this.updateState()
       return
@@ -137,10 +142,6 @@ export class Player implements ScoutTarget {
     const body = this.body
     const grounded = body.blocked.down
     const canAct = !this.attack.isBusy && !this.roll.isRolling
-    // Read edge-triggered keys every frame so presses made mid-action are
-    // dropped instead of firing later (no unbounded input buffer).
-    const attackPressed = input.consumeAttack()
-    const rollPressed = input.consumeRoll()
     const { left, right, jump } = input
 
     if (canAct && attackPressed) {
