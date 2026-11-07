@@ -1242,12 +1242,50 @@
      "point": true,
      "rotation": 0,
      "visible": true
+    },
+    {
+     "id": 2,
+     "name": "enemy_spawn",
+     "type": "enemy_spawn",
+     "x": 1100,
+     "y": 608,
+     "point": true,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "properties": [
+      {
+       "name": "type",
+       "type": "string",
+       "value": "scout"
+      }
+     ]
+    },
+    {
+     "id": 3,
+     "name": "enemy_spawn",
+     "type": "enemy_spawn",
+     "x": 1700,
+     "y": 160,
+     "point": true,
+     "rotation": 0,
+     "visible": true,
+     "width": 0,
+     "height": 0,
+     "properties": [
+      {
+       "name": "type",
+       "type": "string",
+       "value": "scout"
+      }
+     ]
     }
    ]
   }
  ],
  "nextlayerid": 3,
- "nextobjectid": 2,
+ "nextobjectid": 4,
  "tilesets": [
   {
    "columns": 2,

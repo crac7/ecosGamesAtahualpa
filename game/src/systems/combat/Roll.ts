@@ -46,6 +46,11 @@ export class Roll {
     return true
   }
 
+  cancel() {
+    this.rolling = false
+    this.elapsed = 0
+  }
+
   update(deltaMs: number) {
     if (!this.rolling) return
     this.elapsed += deltaMs

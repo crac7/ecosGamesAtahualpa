@@ -1,13 +1,16 @@
 import Phaser from 'phaser'
+import { Scout, type ScoutTarget } from '../entities/Scout'
 import { TrainingDummy } from '../entities/TrainingDummy'
 import {
   BASE_HEIGHT,
   CAMERA,
+  PLAYER,
   PLAYER_ATTACK,
   PLAYER_ROLL,
   PLAYER_STAMINA,
 } from '../settings'
 import { CameraRig } from '../systems/CameraRig'
+import { Health } from '../systems/combat/Health'
 import { MeleeAttack } from '../systems/combat/MeleeAttack'
 import { Roll } from '../systems/combat/Roll'
 import { Stamina } from '../systems/combat/Stamina'
@@ -16,6 +19,8 @@ const ATTACK_WINDUP_TINT = 0x7ff0e6 // eco_3
 const ATTACK_HITBOX_COLOR = 0x2fa3a8 // eco_2
 const STAMINA_BAR_COLOR = 0x2fa3a8 // eco_2
 const STAMINA_BAR_BG = 0x23283a // shadow_deep
+const HEALTH_BAR_COLOR = 0x8e2b3a // textile_red
+const HIT_TINT = 0xe0402e // danger_2
 const HELP_TEXT = 'WASD/Arrows: move  Space/W: jump  J: attack  K: roll'
 
 export class GameScene extends Phaser.Scene {
@@ -40,6 +45,11 @@ export class GameScene extends Phaser.Scene {
   private readonly stamina = new Stamina(PLAYER_STAMINA)
   private readonly roll = new Roll(PLAYER_ROLL)
   private staminaBar?: Phaser.GameObjects.Graphics
+  private readonly health = new Health(PLAYER.maxHp, PLAYER.hitInvulnerableMs)
+  private hitStunLeft = 0
+  private spawnPoint = new Phaser.Math.Vector2()
+  private scouts: Scout[] = []
+  private playerTarget!: ScoutTarget
 
   constructor() {
     super('Game')
@@ -70,6 +80,7 @@ export class GameScene extends Phaser.Scene {
     )
     const spawnX = spawn?.x ?? 96
     const spawnY = spawn?.y ?? BASE_HEIGHT - 64
+    this.spawnPoint.set(spawnX, spawnY)
 
     this.player = this.physics.add.sprite(spawnX, spawnY, 'player_idle', 0)
     this.player.setOrigin(0.5, 1)
@@ -104,6 +115,26 @@ export class GameScene extends Phaser.Scene {
     ]
     this.hitboxDebug = this.add.graphics()
 
+    this.scouts = map
+      .filterObjects('Objects', (obj) => obj.name === 'enemy_spawn')!
+      .filter((obj) => objectType(obj) === 'scout')
+      .map((obj) => new Scout(this, obj.x ?? 0, obj.y ?? 0, groundLayer))
+
+    // Live view of the player for enemy AI and hit resolution.
+    const scene = this
+    this.playerTarget = {
+      get x() {
+        return scene.player.x
+      },
+      get y() {
+        return scene.player.y
+      },
+      health: this.health,
+      getHurtBounds: () => this.playerBounds(),
+      isInvulnerable: () => this.roll.isInvulnerable,
+      onHit: (direction) => this.onPlayerHit(direction),
+    }
+
     this.stateText = this.add
       .text(16, 16, `${HELP_TEXT}\nState: idle`, {
         fontFamily: 'monospace',
@@ -121,6 +152,20 @@ export class GameScene extends Phaser.Scene {
 
     this.stamina.update(delta)
     this.roll.update(delta)
+    this.health.update(delta)
+    for (const scout of this.scouts) scout.tick(delta, this.playerTarget)
+
+    if (this.health.isDead) {
+      this.updateState()
+      return
+    }
+    if (this.hitStunLeft > 0) {
+      // Knocked back: no control until the stun ends.
+      this.hitStunLeft = Math.max(0, this.hitStunLeft - delta)
+      this.drawStaminaBar()
+      this.updateState()
+      return
+    }
 
     const grounded = this.playerBody.blocked.down
     const canAct = !this.attack.isBusy && !this.roll.isRolling
@@ -177,12 +222,11 @@ export class GameScene extends Phaser.Scene {
       this.playerBody.setVelocityY(-jumpSpeed)
     }
 
-    const b = this.playerBody
     this.attack.update(
       delta,
-      new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height),
+      this.playerBounds(),
       this.facing === 'right' ? 1 : -1,
-      this.dummies
+      [...this.dummies, ...this.scouts]
     )
     this.drawHitbox()
     this.drawStaminaBar()
@@ -195,7 +239,11 @@ export class GameScene extends Phaser.Scene {
     const moving = Math.abs(this.playerBody.velocity.x) > 1
 
     let nextState: PlayerState
-    if (this.roll.isRolling) {
+    if (this.health.isDead) {
+      nextState = 'dead'
+    } else if (this.hitStunLeft > 0) {
+      nextState = 'hit'
+    } else if (this.roll.isRolling) {
       nextState = 'roll'
     } else if (this.attack.isBusy) {
       nextState = 'attack'
@@ -216,15 +264,25 @@ export class GameScene extends Phaser.Scene {
     const frameIndex = this.facing === 'right' ? 0 : 1
 
     // Placeholder attack visual until real frames exist: tint on windup.
-    if (this.attack.phase === 'windup') {
+    if (this.state === 'hit' || this.state === 'dead') {
+      this.player.setTint(HIT_TINT)
+    } else if (this.attack.phase === 'windup') {
       this.player.setTint(ATTACK_WINDUP_TINT)
     } else {
       this.player.clearTint()
     }
     // Placeholder roll visual: translucent while the i-frames are active.
-    this.player.setAlpha(this.roll.isInvulnerable ? 0.5 : 1)
+    // Post-hit invulnerability blinks.
+    const blink = this.health.isInvulnerable && Math.floor(this.time.now / 80) % 2 === 0
+    this.player.setAlpha(this.roll.isInvulnerable || blink ? 0.5 : 1)
 
-    if (this.state === 'idle' || this.state === 'attack' || this.state === 'roll') {
+    if (
+      this.state === 'idle' ||
+      this.state === 'attack' ||
+      this.state === 'roll' ||
+      this.state === 'hit' ||
+      this.state === 'dead'
+    ) {
       this.player.anims.stop()
       this.player.setTexture('player_idle', frameIndex)
     } else if (this.state === 'walk') {
@@ -261,13 +319,45 @@ export class GameScene extends Phaser.Scene {
     const g = this.staminaBar
     if (!g) return
     const x = 16
-    const y = 48
+    const y = 60
     const width = 100
     g.clear()
     g.fillStyle(STAMINA_BAR_BG, 1)
     g.fillRect(x, y, width, 4)
     g.fillStyle(STAMINA_BAR_COLOR, 1)
     g.fillRect(x, y, Math.round(width * this.stamina.ratio), 4)
+
+    // Health as one segment per hit point, above the stamina bar.
+    const segment = 12
+    for (let i = 0; i < this.health.max; i++) {
+      g.fillStyle(i < this.health.hp ? HEALTH_BAR_COLOR : STAMINA_BAR_BG, 1)
+      g.fillRect(x + i * (segment + 2), y - 8, segment, 5)
+    }
+  }
+
+  private playerBounds() {
+    const b = this.playerBody
+    return new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height)
+  }
+
+  private onPlayerHit(direction: 1 | -1) {
+    this.attack.cancel()
+    this.roll.cancel()
+    this.drawHitbox()
+    this.playerBody.setVelocity(direction * PLAYER.knockbackX, -PLAYER.knockbackY)
+    this.hitStunLeft = PLAYER.hitStunMs
+    if (this.health.isDead) {
+      this.time.delayedCall(PLAYER.respawnDelayMs, () => this.respawn())
+    }
+  }
+
+  /** Placeholder until checkpoints: back to the map spawn, full resources. */
+  private respawn() {
+    this.health.reset()
+    this.stamina.refill()
+    this.hitStunLeft = 0
+    this.playerBody.reset(this.spawnPoint.x, this.spawnPoint.y)
+    this.cameraRig?.snapToTarget()
   }
 
   private createAnimations() {
@@ -335,5 +425,19 @@ export class GameScene extends Phaser.Scene {
   }
 }
 
-type PlayerState = 'idle' | 'walk' | 'jump' | 'fall' | 'attack' | 'roll'
+type PlayerState =
+  | 'idle'
+  | 'walk'
+  | 'jump'
+  | 'fall'
+  | 'attack'
+  | 'roll'
+  | 'hit'
+  | 'dead'
+
+function objectType(obj: Phaser.Types.Tilemaps.TiledObject): string | undefined {
+  const props = obj.properties as { name: string; value: unknown }[] | undefined
+  const value = props?.find((p) => p.name === 'type')?.value
+  return typeof value === 'string' ? value : undefined
+}
 type Facing = 'left' | 'right'

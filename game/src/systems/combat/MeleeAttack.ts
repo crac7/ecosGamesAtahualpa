@@ -18,6 +18,8 @@ export interface Hurtbox {
   readonly health: Health
   getHurtBounds(): Phaser.Geom.Rectangle
   onHit(direction: 1 | -1, damage: number): void
+  /** Extra invulnerability (e.g. roll i-frames). A dodged swing can still hit later in its active window. */
+  isInvulnerable?(): boolean
 }
 
 /**
@@ -87,6 +89,7 @@ export class MeleeAttack {
     this.placeHitbox(ownerBounds, facing)
     for (const target of targets) {
       if (this.hitThisSwing.has(target) || target.health.isDead) continue
+      if (target.isInvulnerable?.()) continue
       if (!Phaser.Geom.Intersects.RectangleToRectangle(this.hitbox, target.getHurtBounds())) {
         continue
       }

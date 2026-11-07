@@ -39,6 +39,11 @@ export class Stamina {
     return true
   }
 
+  refill() {
+    this.current = this.config.max
+    this.delayLeft = 0
+  }
+
   update(deltaMs: number) {
     if (this.delayLeft > 0) {
       this.delayLeft = Math.max(0, this.delayLeft - deltaMs)

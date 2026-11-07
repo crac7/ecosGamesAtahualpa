@@ -32,6 +32,40 @@ export const PLAYER_STAMINA = {
   regenDelayMs: 600,
 } as const
 
+export const PLAYER = {
+  maxHp: 5,
+  /** Invulnerability after taking a hit. */
+  hitInvulnerableMs: 700,
+  /** Input lock after taking a hit. */
+  hitStunMs: 250,
+  knockbackX: 160,
+  knockbackY: 160,
+  respawnDelayMs: 1000,
+} as const
+
+/** Basic ground enemy. Long windup = readable telegraph, long recovery = punish window. */
+export const SCOUT = {
+  width: 22,
+  height: 32,
+  maxHp: 3,
+  patrolSpeed: 40,
+  chaseSpeed: 95,
+  sightRange: 160,
+  loseRange: 224,
+  verticalSight: 40,
+  attackRange: 30,
+  staggerMs: 300,
+  knockbackSpeed: 120,
+  attack: {
+    windupMs: 450,
+    activeMs: 120,
+    recoveryMs: 600,
+    damage: 1,
+    width: 26,
+    height: 20,
+  },
+} as const
+
 export const PLAYER_ROLL = {
   durationMs: 360,
   speed: 260,
