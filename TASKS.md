@@ -14,6 +14,7 @@
 - [x] Camara con seguimiento (deadzone + look-ahead + suavizado independiente del FPS) y limites por mapa (`game/src/systems/CameraRig.ts`).
 - [x] Mapa de prueba ampliado a 60x20 para probar la camara.
 - [x] Combate basico: ataque con J (windup/active/recovery), hitbox, dano y muñecos de entrenamiento placeholder.
+- [x] Stamina (gasto, pausa y regeneracion) y roll con K (i-frames, comprometido, solo en el suelo) + barra de stamina placeholder.
 
 ## Parcial
 - [-] M0: Loader/manifest de assets (solo precarga minima).
@@ -21,7 +22,6 @@
 
 ## Por hacer (segun README)
 - [x] Player con sprites y maquina de estados (idle/walk/jump/fall).
-- [ ] Stamina y esquiva/roll.
 - [ ] Enemigo basico (patrol/chase/attack).
 - [ ] Checkpoint tipo fogon (guardar + respawn + reset enemigos).
 - [ ] Shortcut/atajo desbloqueable (puerta desde el otro lado).

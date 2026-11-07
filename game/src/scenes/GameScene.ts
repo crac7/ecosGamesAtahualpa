@@ -1,12 +1,22 @@
 import Phaser from 'phaser'
 import { TrainingDummy } from '../entities/TrainingDummy'
-import { BASE_HEIGHT, CAMERA, PLAYER_ATTACK } from '../settings'
+import {
+  BASE_HEIGHT,
+  CAMERA,
+  PLAYER_ATTACK,
+  PLAYER_ROLL,
+  PLAYER_STAMINA,
+} from '../settings'
 import { CameraRig } from '../systems/CameraRig'
 import { MeleeAttack } from '../systems/combat/MeleeAttack'
+import { Roll } from '../systems/combat/Roll'
+import { Stamina } from '../systems/combat/Stamina'
 
 const ATTACK_WINDUP_TINT = 0x7ff0e6 // eco_3
 const ATTACK_HITBOX_COLOR = 0x2fa3a8 // eco_2
-const HELP_TEXT = 'WASD/Arrows: move  Space/W: jump  J: attack'
+const STAMINA_BAR_COLOR = 0x2fa3a8 // eco_2
+const STAMINA_BAR_BG = 0x23283a // shadow_deep
+const HELP_TEXT = 'WASD/Arrows: move  Space/W: jump  J: attack  K: roll'
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite
@@ -18,6 +28,7 @@ export class GameScene extends Phaser.Scene {
     up: Phaser.Input.Keyboard.Key
     jump: Phaser.Input.Keyboard.Key
     attack: Phaser.Input.Keyboard.Key
+    roll: Phaser.Input.Keyboard.Key
   }
   private state: PlayerState = 'idle'
   private stateText?: Phaser.GameObjects.Text
@@ -26,6 +37,9 @@ export class GameScene extends Phaser.Scene {
   private readonly attack = new MeleeAttack(PLAYER_ATTACK)
   private dummies: TrainingDummy[] = []
   private hitboxDebug?: Phaser.GameObjects.Graphics
+  private readonly stamina = new Stamina(PLAYER_STAMINA)
+  private readonly roll = new Roll(PLAYER_ROLL)
+  private staminaBar?: Phaser.GameObjects.Graphics
 
   constructor() {
     super('Game')
@@ -62,7 +76,7 @@ export class GameScene extends Phaser.Scene {
 
     this.playerBody = this.player.body as Phaser.Physics.Arcade.Body
     this.playerBody.setCollideWorldBounds(true)
-    this.playerBody.setMaxVelocity(200, 700)
+    this.playerBody.setMaxVelocity(Math.max(200, PLAYER_ROLL.speed), 700)
     this.playerBody.setSize(24, 40)
     this.playerBody.setOffset(12, 8)
 
@@ -80,6 +94,7 @@ export class GameScene extends Phaser.Scene {
       up: Phaser.Input.Keyboard.KeyCodes.W,
       jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
       attack: Phaser.Input.Keyboard.KeyCodes.J,
+      roll: Phaser.Input.Keyboard.KeyCodes.K,
     }) as GameScene['wasd']
 
     const floorY = map.heightInPixels - map.tileHeight
@@ -96,16 +111,25 @@ export class GameScene extends Phaser.Scene {
         color: '#cdd6df',
       })
       .setScrollFactor(0)
+
+    // Placeholder HUD until the UI task: stamina bar under the help text.
+    this.staminaBar = this.add.graphics().setScrollFactor(0)
   }
 
   update(_time: number, delta: number) {
     if (!this.playerBody) return
 
-    if (this.wasd && Phaser.Input.Keyboard.JustDown(this.wasd.attack)) {
-      this.attack.start()
-    }
-    // Commit to the swing: no steering or jumping while attacking on the ground.
-    const lockedByAttack = this.attack.isBusy && this.playerBody.blocked.down
+    this.stamina.update(delta)
+    this.roll.update(delta)
+
+    const grounded = this.playerBody.blocked.down
+    const canAct = !this.attack.isBusy && !this.roll.isRolling
+    // Read edge-triggered keys every frame so presses made mid-action are
+    // dropped instead of firing later (no unbounded input buffer).
+    const attackPressed =
+      !!this.wasd && Phaser.Input.Keyboard.JustDown(this.wasd.attack)
+    const rollPressed =
+      !!this.wasd && Phaser.Input.Keyboard.JustDown(this.wasd.roll)
 
     const left =
       this.cursors?.left?.isDown || this.wasd?.left.isDown || false
@@ -120,7 +144,24 @@ export class GameScene extends Phaser.Scene {
     const speed = 180
     const jumpSpeed = 380
 
-    if (lockedByAttack) {
+    if (canAct && attackPressed) {
+      if (this.stamina.spend(PLAYER_ATTACK.staminaCost)) this.attack.start()
+    } else if (canAct && grounded && rollPressed) {
+      // Roll toward the held direction, or the facing side when none is held.
+      const dir = left ? -1 : right ? 1 : this.facing === 'right' ? 1 : -1
+      if (this.stamina.spend(PLAYER_ROLL.staminaCost)) {
+        this.roll.start(dir)
+        this.facing = dir === 1 ? 'right' : 'left'
+      }
+    }
+
+    // Committed actions: no steering or jumping while rolling or attacking on the ground.
+    const lockedByAttack = this.attack.isBusy && grounded
+    const locked = lockedByAttack || this.roll.isRolling
+
+    if (this.roll.isRolling) {
+      this.playerBody.setVelocityX(this.roll.velocityX)
+    } else if (lockedByAttack) {
       this.playerBody.setVelocityX(0)
     } else if (left) {
       this.playerBody.setVelocityX(-speed)
@@ -132,7 +173,7 @@ export class GameScene extends Phaser.Scene {
       this.playerBody.setVelocityX(0)
     }
 
-    if (jump && this.playerBody.blocked.down && !lockedByAttack) {
+    if (jump && grounded && !locked) {
       this.playerBody.setVelocityY(-jumpSpeed)
     }
 
@@ -144,6 +185,7 @@ export class GameScene extends Phaser.Scene {
       this.dummies
     )
     this.drawHitbox()
+    this.drawStaminaBar()
 
     this.updateState()
   }
@@ -153,7 +195,9 @@ export class GameScene extends Phaser.Scene {
     const moving = Math.abs(this.playerBody.velocity.x) > 1
 
     let nextState: PlayerState
-    if (this.attack.isBusy) {
+    if (this.roll.isRolling) {
+      nextState = 'roll'
+    } else if (this.attack.isBusy) {
       nextState = 'attack'
     } else if (isGrounded) {
       nextState = moving ? 'walk' : 'idle'
@@ -177,8 +221,10 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.player.clearTint()
     }
+    // Placeholder roll visual: translucent while the i-frames are active.
+    this.player.setAlpha(this.roll.isInvulnerable ? 0.5 : 1)
 
-    if (this.state === 'idle' || this.state === 'attack') {
+    if (this.state === 'idle' || this.state === 'attack' || this.state === 'roll') {
       this.player.anims.stop()
       this.player.setTexture('player_idle', frameIndex)
     } else if (this.state === 'walk') {
@@ -209,6 +255,19 @@ export class GameScene extends Phaser.Scene {
     if (this.attack.phase !== 'active') return
     g.fillStyle(ATTACK_HITBOX_COLOR, 0.5)
     g.fillRectShape(this.attack.hitbox)
+  }
+
+  private drawStaminaBar() {
+    const g = this.staminaBar
+    if (!g) return
+    const x = 16
+    const y = 48
+    const width = 100
+    g.clear()
+    g.fillStyle(STAMINA_BAR_BG, 1)
+    g.fillRect(x, y, width, 4)
+    g.fillStyle(STAMINA_BAR_COLOR, 1)
+    g.fillRect(x, y, Math.round(width * this.stamina.ratio), 4)
   }
 
   private createAnimations() {
@@ -276,5 +335,5 @@ export class GameScene extends Phaser.Scene {
   }
 }
 
-type PlayerState = 'idle' | 'walk' | 'jump' | 'fall' | 'attack'
+type PlayerState = 'idle' | 'walk' | 'jump' | 'fall' | 'attack' | 'roll'
 type Facing = 'left' | 'right'

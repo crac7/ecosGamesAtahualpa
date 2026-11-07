@@ -23,4 +23,19 @@ export const PLAYER_ATTACK = {
   damage: 1,
   width: 28,
   height: 24,
+  staminaCost: 20,
+} as const
+
+export const PLAYER_STAMINA = {
+  max: 100,
+  regenPerSecond: 45,
+  regenDelayMs: 600,
+} as const
+
+export const PLAYER_ROLL = {
+  durationMs: 360,
+  speed: 260,
+  iFrameStartMs: 40,
+  iFrameEndMs: 280,
+  staminaCost: 25,
 } as const
